@@ -19,6 +19,7 @@ int main(int argc, char **argv)
     client.Read();
 
     ranger.RequestConfigure();
+    ranger.RequestGeom();
     
     cout << ranger.GetElementCount() << " " << ranger.GetRangeCount() << endl;
 
