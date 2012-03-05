@@ -17,6 +17,8 @@ int main(int argc, char **argv)
 
     // Perform a preliminary fetch from the robot.
     client.Read();
+
+    ranger.RequestConfigure();
     
     cout << ranger.GetElementCount() << " " << ranger.GetRangeCount() << endl;
 
