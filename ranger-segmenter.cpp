@@ -18,7 +18,7 @@ int main(int argc, char **argv)
     // Perform a preliminary fetch from the robot.
     client.Read();
     
-    cout << ranger.GetElementCount() << endl;
+    cout << ranger.GetElementCount() << " " << ranger.GetRangeCount() << endl;
 
     // Check the number of elements in the ranger
     // We only support laser-scanners (single-element, fan-of-readings devices)
