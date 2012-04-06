@@ -10,7 +10,8 @@ using std::vector;
 using arma::mat;
 using arma::vec;
 using arma::eye;
-using arma:: math;
+using arma::math;
+using arma::dot;
 
 #include <libplayerc++/playerc++.h>
 using PlayerCc::PlayerClient;
@@ -61,17 +62,28 @@ int main(int argc, char **argv)
     model_loose(0,0) = 0.3;
     model_loose(1,1) = (math::pi() / 180.0)*2;
 
+    // The jacobian of the measurement selection function, h.  Since h selects
+    // the range component of the current state, the jacobian is [1 0]
+    mat jac_h(1,2);
+    jac_h(0,0) = 1.0;
+    jac_h(0,1) = 0.0;
+
     // Set up the measurement (sensor) variance. This is just the variance in
     // the range.
     double sensor_var = 0.01;
 
-    
-
     // Turn on the laser
     ranger.SetPower(true);
 
-    // Storage for the range sequence pulled from the ranger
-    vector<double> ranges(num_readings);
+    // Storage for the point sequence
+    mat points(2, num_readings);
+
+    // Storage for the delta sequence
+    mat deltas(2, num_readings-1);
+
+    // Storage for the cross product and dot product sequences
+    mat crossps(1, num_readings-2);
+    mat dotps(1, num_readings-2);
 
     while(true)
     {
@@ -79,42 +91,41 @@ int main(int argc, char **argv)
         client.Read();
         
         // Copy readings from the ranger proxy
-        ranges.clear();
+        double angle = angle_min;
         for(int count = 0; count < num_readings; count++)
         {
-            ranges[count] = ranger[count];
+            points(0, count) = ranger[count] * cos(angle);
+            points(1, count) = ranger[count] * sin(angle);
+            
+            angle += angle_delta;
         }
 
-        // Set up initial estimates for the Kalman filters
-        vec cur_state(2);
-        cur_state(0) = ranges.front();
-        cur_state(1) = angle_min;
-
-        mat cur_var = eye<double>(2) * 100.0;
-
-        // Step along the range readings with a kalman filter.
-        for(int index = 0; index < ranges.size(); index++)
+        // Compute deltas
+        for(int count = 1; count < num_readings; count++)
         {
-            // Take some common functions
-            double sin_theta_k     = sin(cur_state(1));
-            double sin_theta_k_1   = sin(cur_state(1) + angle_delta);
-            double sin_delta_theta = sin(angle_delta);
-            
-            // Take the jacobian of the transition function
-            mat jac = eye<double>(2);
-            jac(0,0) = sin_theta_k / sin_theta_k_1;
-            jac(0,1) = sin_delta_theta / pow(sin_theta_k_1, 2) * cur_state(0);
-
-            // Compute predicted state
-            vec pred_state(2);
-            pred_state(0) = sin_theta_k / sin_theta_k_1 * cur_state(0);
-            pred_state(1) = cur_state(1) + angle_delta;
-
-            mat pred_var = jac * cur_var * jac.t() + cur_var;
-
-            mat pred_measurement = cur_state(0);
-            
+            deltas.col(count-1) = points.col(count) - points.col(count-1);
         }
+
+        // Compute cross products and dot products
+        for(int count = 2; count < num_readings; count++)
+        {
+            crossps(0, count-2) = deltas(0,count-2)*deltas(1, count-1)
+                                  - deltas(0, count-1)*deltas(1, count-2);
+            
+            dotps(0, count-2) = dot(deltas.col(count-2), deltas.col(count-1));
+        }
+
+        // Bootstrap output
+        angle = angle_min;
+        for(int count = 2; count < num_readings; count++)
+        {
+            cout << angle << " " << crossps(0, count-2) << endl;
+            angle += angle_delta;
+        }
+
+        cout << endl;
+
+        break;
     }
 
     return 0;
