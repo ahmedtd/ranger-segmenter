@@ -110,7 +110,9 @@ int main(int argc, char **argv)
             pred_state(0) = sin_theta_k / sin_theta_k_1 * cur_state(0);
             pred_state(1) = cur_state(1) + angle_delta;
 
-            mat pred_var = jac * cur_var * jac.t() + 
+            mat pred_var = jac * cur_var * jac.t() + cur_var;
+
+            mat pred_measurement = cur_state(0);
             
         }
     }
