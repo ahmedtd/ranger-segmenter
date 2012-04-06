@@ -12,6 +12,7 @@ using arma::vec;
 using arma::eye;
 using arma::math;
 using arma::dot;
+using arma::norm;
 
 #include <libplayerc++/playerc++.h>
 using PlayerCc::PlayerClient;
@@ -51,27 +52,6 @@ int main(int argc, char **argv)
     cout << "num readings: " << num_readings << endl;
     cout << "angle delta: "  << angle_delta << endl;
     
-    // Set up the strict and loose model variances.
-    // These are the expected variances of where the next point will lie on the
-    // wall.
-    mat model_var_strict = eye<double>(2);
-    model_strict(0,0) = 0.1;
-    model_strict(1,1) = (math::pi() / 180.0);
-    
-    mat model_var_loose = eye<double>(2);
-    model_loose(0,0) = 0.3;
-    model_loose(1,1) = (math::pi() / 180.0)*2;
-
-    // The jacobian of the measurement selection function, h.  Since h selects
-    // the range component of the current state, the jacobian is [1 0]
-    mat jac_h(1,2);
-    jac_h(0,0) = 1.0;
-    jac_h(0,1) = 0.0;
-
-    // Set up the measurement (sensor) variance. This is just the variance in
-    // the range.
-    double sensor_var = 0.01;
-
     // Turn on the laser
     ranger.SetPower(true);
 
@@ -104,6 +84,7 @@ int main(int argc, char **argv)
         for(int count = 1; count < num_readings; count++)
         {
             deltas.col(count-1) = points.col(count) - points.col(count-1);
+            deltas.col(count-1) /= norm(deltas.col(count-1), 2);
         }
 
         // Compute cross products and dot products
